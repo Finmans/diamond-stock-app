@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการสต็อกเพชร (เพิ่ม แก้ไข ลบ)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
+                    },
+                    colors: {
+                        primary: { light: '#6366f1', DEFAULT: '#4f46e5', dark: '#4338ca' }, // Indigo
+                        secondary: { light: '#f9fafb', DEFAULT: '#e5e7eb', dark: '#9ca3af' }, // Gray
+                        danger: { light: '#fee2e2', DEFAULT: '#ef4444', dark: '#dc2626' }, // Red
+                        success: { light: '#dcfce7', DEFAULT: '#22c55e', dark: '#16a34a' }, // Green
+                        warning: { light: '#fef3c7', DEFAULT: '#f59e0b', dark: '#d97706' }, // Amber
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Base body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        /* Table styling */
+        th, td {
+            padding: 0.75rem 1rem; /* py-3 px-4 */
+            text-align: left;
+            border-bottom-width: 1px;
+            border-color: #e5e7eb; /* border-gray-200 */
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        thead th {
+            background-color: #f9fafb; /* bg-gray-50 */
+            color: #374151; /* text-gray-700 */
+            font-weight: 600; /* font-semibold */
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 0.875rem; /* text-sm */
+        }
+        tbody tr:nth-child(even) { background-color: #ffffff; }
+        tbody tr:nth-child(odd) { background-color: #f9fafb; }
+        tbody tr:hover { background-color: #eff6ff; } /* bg-blue-50 */
+        .table-container {
+             max-height: 65vh;
+             overflow-y: auto;
+             border: 1px solid #e5e7eb;
+             border-radius: 0.5rem; /* rounded-lg */
+             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+             margin-top: 1.5rem; /* mt-6 */
+        }
+        /* Input, Select, Label styling */
+        label {
+            display: block;
+            margin-bottom: 0.375rem; /* mb-1.5 */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            color: #4b5563; /* text-gray-600 */
+        }
+        input[type="text"], input[type="number"], select {
+             width: 100%;
+             padding: 0.625rem 0.875rem;
+             border: 1px solid #d1d5db;
+             border-radius: 0.375rem;
+             box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+             transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+             font-size: 0.875rem;
+             background-color: white; /* Ensure select background is white */
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #6366f1; /* focus:border-primary-light */
+            box-shadow: 0 0 0 2px #a5b4fc; /* focus:ring-indigo-300 */
+        }
+         /* Style for readonly inputs (like SKU during edit) */
+        input[readonly].editable-key {
+            background-color: #e5e7eb; /* bg-gray-200 */
+            cursor: not-allowed;
+            border-color: #d1d5db; /* border-gray-300 */
+            color: #6b7280; /* text-gray-500 */
+            font-style: italic;
+        }
+        /* General Button styles */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 0.625rem 1.25rem; border-radius: 0.375rem; font-weight: 600;
+            font-size: 0.875rem; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            transition: all 0.2s ease-in-out; cursor: pointer; border: 1px solid transparent;
+        }
+        .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); }
+        .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.75rem; } /* Smaller button */
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+
+        /* Button color variants */
+        .btn-primary { background-color: #4f46e5; color: white; border-color: #4f46e5; }
+        .btn-primary:hover:not(:disabled) { background-color: #4338ca; border-color: #4338ca; }
+        .btn-secondary { background-color: #e5e7eb; color: #374151; border-color: #d1d5db; }
+        .btn-secondary:hover:not(:disabled) { background-color: #d1d5db; border-color: #9ca3af; }
+        .btn-success { background-color: #16a34a; color: white; border-color: #16a34a; }
+        .btn-success:hover:not(:disabled) { background-color: #15803d; border-color: #15803d; }
+        .btn-warning { background-color: #f59e0b; color: white; border-color: #f59e0b; }
+        .btn-warning:hover:not(:disabled) { background-color: #d97706; border-color: #d97706; }
+        .btn-danger { background-color: #ef4444; color: white; border-color: #ef4444; }
+        .btn-danger:hover:not(:disabled) { background-color: #dc2626; border-color: #dc2626; }
+
+        /* Required field indicator */
+        label span.required { color: #ef4444; /* text-red-500 */ margin-left: 2px; }
+    </style>
+</head>
+<body class="p-6 md:p-10">
+
+    <div class="container mx-auto max-w-7xl bg-white p-6 md:p-8 rounded-xl shadow-lg">
+        <h1 class="text-3xl font-bold mb-8 text-center text-gray-800">ระบบจัดการสต็อกเพชร</h1>
+
+        <form id="diamondForm" class="mb-10 p-6 border border-gray-200 rounded-lg bg-white shadow-sm">
+            <h2 id="formTitle" class="text-xl font-semibold mb-6 text-gray-700 border-b pb-3">เพิ่มรายการเพชรใหม่</h2>
+            <input type="hidden" id="editId" value=""> <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-4">
+                <div>
+                    <label for="sku">รหัสเพชร:<span class="required">*</span></label>
+                    <input type="text" id="sku" placeholder="เช่น N0125001" required>
+                </div>
+                <div>
+                    <label for="igi">หมายเลข IGI:</label>
+                    <input type="text" id="igi" placeholder="เลขเซอร์ IGI (ถ้ามี)">
+                </div>
+                 <div>
+                    <label for="weight">น้ำหนัก (กะรัต):<span class="required">*</span></label>
+                    <input type="number" step="0.01" min="0" id="weight" placeholder="เช่น 0.69" required>
+                </div>
+                 <div>
+                    <label for="shape">ทรงเพชร:<span class="required">*</span></label>
+                    <select id="shape" required>
+                        <option value="">-- เลือกทรง --</option>
+                        <option value="Round">Round</option>
+                        <option value="Princess">Princess</option>
+                        <option value="Emerald">Emerald</option>
+                        <option value="Asscher">Asscher</option>
+                        <option value="Marquise">Marquise</option>
+                        <option value="Oval">Oval</option>
+                        <option value="Radiant">Radiant</option>
+                        <option value="Pear">Pear</option>
+                        <option value="Heart">Heart</option>
+                        <option value="Cushion">Cushion</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                 <div>
+                    <label for="clarity">ความสะอาด (Clarity):</label>
+                    <input type="text" id="clarity" placeholder="เช่น VS1, VVS2">
+                </div>
+                 <div>
+                    <label for="color">น้ำ:</label>
+                    <input type="text" id="color" placeholder="เช่น D, E, F">
+                </div>
+                 <div>
+                    <label for="diamond_cost">ราคาต้นทุนเพชร:<span class="required">*</span></label>
+                    <input type="number" step="0.01" min="0" id="diamond_cost" placeholder="0.00" required>
+                </div>
+                 <div>
+                    <label for="setting_cost">ค่าทุนตัวเรือน:</label>
+                    <input type="number" step="0.01" min="0" id="setting_cost" placeholder="0.00">
+                </div>
+                 <div class="md:col-span-1">
+                    <label for="status">สถานะ:</label>
+                    <select id="status" required>
+                        <option value="คงคลัง">คงคลัง</option>
+                        <option value="ขายแล้ว">ขายแล้ว</option>
+                        <option value="จอง">จอง</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-center gap-4">
+                 <button type="submit" id="saveBtn" class="btn btn-primary">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <span id="saveBtnText">บันทึก</span>
+                </button>
+                 <button type="button" id="clearBtn" class="btn btn-secondary">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <span id="clearBtnText">ล้างฟอร์ม</span>
+                </button>
+            </div>
+        </form>
+
+        <div id="messageBox" class="mb-6 p-4 rounded-md text-center font-medium hidden text-sm"></div>
+
+        <div>
+            <h2 class="text-2xl font-semibold mb-5 text-gray-700">รายการเพชรในสต็อก</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-5 p-4 border rounded-md bg-gray-50">
+                <div>
+                    <label for="searchInput">ค้นหาเพชร:</label>
+                    <input type="text" id="searchInput" placeholder="รหัส, IGI, ทรง...">
+                </div>
+                <div>
+                    <label for="filterStatus">กรองตามสถานะ:</label>
+                    <select id="filterStatus">
+                        <option value="">ทั้งหมด</option>
+                        <option value="คงคลัง">คงคลัง</option>
+                        <option value="ขายแล้ว">ขายแล้ว</option>
+                        <option value="จอง">จอง</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+                 <div>
+                    <label for="filterShape">กรองตามทรง:</label>
+                    <select id="filterShape">
+                         <option value="">ทั้งหมด</option>
+                         <option value="Round">Round</option>
+                         <option value="Princess">Princess</option>
+                         <option value="Emerald">Emerald</option>
+                         <option value="Asscher">Asscher</option>
+                         <option value="Marquise">Marquise</option>
+                         <option value="Oval">Oval</option>
+                         <option value="Radiant">Radiant</option>
+                         <option value="Pear">Pear</option>
+                         <option value="Heart">Heart</option>
+                         <option value="Cushion">Cushion</option>
+                         <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="sortField">เรียงตาม:</label>
+                    <select id="sortField">
+                        <option value="sku">รหัสเพชร (A-Z)</option>
+                        <option value="weight_asc">น้ำหนัก (น้อย > มาก)</option>
+                        <option value="weight_desc">น้ำหนัก (มาก > น้อย)</option>
+                        <option value="total_cost_asc">ต้นทุนรวม (น้อย > มาก)</option>
+                        <option value="total_cost_desc">ต้นทุนรวม (มาก > น้อย)</option>
+                    </select>
+                </div>
+            </div>
+
+             <div class="flex justify-end gap-3 mb-5">
+                 <button type="button" id="exportCsvBtn" class="btn btn-success btn-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    ส่งออก (CSV)
+                 </button>
+                 <button type="button" id="exportJsonBtn" class="btn btn-warning btn-sm">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    ส่งออก (JSON)
+                 </button>
+                 <button type="button" id="importBtn" class="btn btn-secondary btn-sm" disabled title="ฟังก์ชันนำเข้ายังไม่พร้อมใช้งาน">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    นำเข้าข้อมูล
+                 </button>
+            </div>
+
+
+            <div class="table-container">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th>รหัสเพชร</th>
+                            <th>น้ำหนัก</th>
+                            <th>Clarity</th>
+                            <th>น้ำ</th>
+                            <th>ทรง</th>
+                            <th>IGI Code</th>
+                            <th>ต้นทุนรวม</th>
+                            <th>สถานะ</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody" class="bg-white divide-y divide-gray-200 text-sm">
+                        <tr><td colspan="9" class="text-center text-gray-500 py-6">กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- JavaScript Logic ---
+        const STORAGE_KEY = 'diamondStock';
+        let stock = loadStock(); // Load initial stock
+
+        // --- DOM References ---
+        const diamondForm = document.getElementById('diamondForm');
+        const formTitle = document.getElementById('formTitle'); // Form title ref
+        const skuInput = document.getElementById('sku');
+        const igiInput = document.getElementById('igi');
+        const weightInput = document.getElementById('weight');
+        const shapeSelect = document.getElementById('shape');
+        const clarityInput = document.getElementById('clarity');
+        const colorInput = document.getElementById('color');
+        const diamondCostInput = document.getElementById('diamond_cost');
+        const settingCostInput = document.getElementById('setting_cost');
+        const statusSelect = document.getElementById('status');
+        const editIdInput = document.getElementById('editId');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveBtnText = document.getElementById('saveBtnText'); // Save button text ref
+        const clearBtn = document.getElementById('clearBtn');
+        const clearBtnText = document.getElementById('clearBtnText'); // Clear button text ref
+        const messageBox = document.getElementById('messageBox');
+        const stockTableBody = document.getElementById('stockTableBody');
+        const searchInput = document.getElementById('searchInput');
+        const filterStatusSelect = document.getElementById('filterStatus');
+        const filterShapeSelect = document.getElementById('filterShape');
+        const sortFieldSelect = document.getElementById('sortField');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const exportJsonBtn = document.getElementById('exportJsonBtn');
+
+        // --- Utility Functions ---
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.className = 'mb-6 p-4 rounded-md text-center font-medium text-sm'; // Reset classes
+            if (type === 'error') { messageBox.classList.add('bg-danger-light', 'text-danger-dark'); }
+            else if (type === 'warning') { messageBox.classList.add('bg-warning-light', 'text-warning-dark'); }
+            else { messageBox.classList.add('bg-success-light', 'text-success-dark'); }
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 3000);
+        }
+
+        function formatCurrency(value) {
+            const num = parseFloat(value);
+            if (isNaN(num)) return '-';
+            return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // --- Local Storage Functions ---
+        function loadStock() {
+            const savedStock = localStorage.getItem(STORAGE_KEY);
+            if (savedStock) {
+                try { return JSON.parse(savedStock); }
+                catch (e) { console.error("Error parsing saved stock:", e); return []; }
+            } else { return []; }
+        }
+
+        function saveStock() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stock)); }
+            catch (e) { console.error("Error saving stock:", e); showMessage("เกิดข้อผิดพลาดในการบันทึกข้อมูลสต็อก", 'error'); }
+        }
+
+        // --- Core Logic Functions ---
+        function calculateTotalCost(diamondCost, settingCost) {
+             const dCost = parseFloat(diamondCost) || 0;
+             const sCost = parseFloat(settingCost) || 0;
+             return dCost + sCost;
+        }
+
+        // --- NEW: Edit Function ---
+        function editDiamond(skuToEdit) {
+            const itemToEdit = stock.find(item => item.sku === skuToEdit);
+            if (!itemToEdit) {
+                showMessage(`ไม่พบข้อมูลเพชร ${skuToEdit} ที่ต้องการแก้ไข`, 'error');
+                return;
+            }
+
+            // Populate form with item data
+            skuInput.value = itemToEdit.sku;
+            igiInput.value = itemToEdit.igi || '';
+            weightInput.value = itemToEdit.weight;
+            shapeSelect.value = itemToEdit.shape;
+            clarityInput.value = itemToEdit.clarity || '';
+            colorInput.value = itemToEdit.color || '';
+            diamondCostInput.value = itemToEdit.diamond_cost;
+            settingCostInput.value = itemToEdit.setting_cost || '';
+            statusSelect.value = itemToEdit.status;
+
+            // Set edit state
+            editIdInput.value = skuToEdit; // Store the SKU being edited
+            formTitle.textContent = `แก้ไขรายการเพชร: ${skuToEdit}`; // Change form title
+            saveBtnText.textContent = 'อัปเดตข้อมูล'; // Change save button text
+            saveBtn.classList.replace('btn-primary', 'btn-warning'); // Change button color
+            clearBtnText.textContent = 'ยกเลิกแก้ไข'; // Change clear button text
+            skuInput.readOnly = true; // Make SKU readonly during edit
+            skuInput.classList.add('editable-key');
+
+            // Scroll to form for better UX
+            diamondForm.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- NEW: Delete Function ---
+        function deleteDiamond(skuToDelete) {
+             if (confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบเพชร รหัส: ${skuToDelete}? การกระทำนี้ไม่สามารถย้อนกลับได้`)) {
+                const indexToDelete = stock.findIndex(item => item.sku === skuToDelete);
+                if (indexToDelete > -1) {
+                    stock.splice(indexToDelete, 1); // Remove item from array
+                    saveStock(); // Update localStorage
+                    renderTable(); // Refresh table
+                    showMessage(`ลบเพชร ${skuToDelete} สำเร็จ`);
+                } else {
+                     showMessage(`ไม่พบข้อมูลเพชร ${skuToDelete} ที่ต้องการลบ`, 'error');
+                }
+            }
+        }
+
+
+        function renderTable() {
+            stockTableBody.innerHTML = '';
+            const searchTerm = searchInput.value.toLowerCase();
+            const filterStatus = filterStatusSelect.value;
+            const filterShape = filterShapeSelect.value;
+            const sortField = sortFieldSelect.value;
+
+            let filteredStock = stock.filter(item => {
+                const matchesSearch = !searchTerm ||
+                    item.sku.toLowerCase().includes(searchTerm) ||
+                    (item.igi && item.igi.toLowerCase().includes(searchTerm)) ||
+                    item.shape.toLowerCase().includes(searchTerm) ||
+                    (item.clarity && item.clarity.toLowerCase().includes(searchTerm)) ||
+                    (item.color && item.color.toLowerCase().includes(searchTerm));
+                const matchesStatus = !filterStatus || item.status === filterStatus;
+                const matchesShape = !filterShape || item.shape === filterShape;
+                return matchesSearch && matchesStatus && matchesShape;
+            });
+
+            filteredStock.sort((a, b) => {
+                switch (sortField) {
+                    case 'weight_asc': return (parseFloat(a.weight) || 0) - (parseFloat(b.weight) || 0);
+                    case 'weight_desc': return (parseFloat(b.weight) || 0) - (parseFloat(a.weight) || 0);
+                    case 'total_cost_asc': return (a.total_cost || 0) - (b.total_cost || 0);
+                    case 'total_cost_desc': return (b.total_cost || 0) - (a.total_cost || 0);
+                    case 'sku': default: return a.sku.toLowerCase().localeCompare(b.sku.toLowerCase());
+                }
+            });
+
+            if (filteredStock.length === 0) {
+                stockTableBody.innerHTML = `<tr><td colspan="9" class="text-center text-gray-500 py-6">ไม่พบข้อมูลเพชรที่ตรงเงื่อนไข</td></tr>`;
+                return;
+            }
+
+            filteredStock.forEach(item => {
+                const row = stockTableBody.insertRow();
+                row.insertCell().textContent = item.sku;
+                row.insertCell().textContent = parseFloat(item.weight).toFixed(2);
+                row.insertCell().textContent = item.clarity || '-';
+                row.insertCell().textContent = item.color || '-';
+                row.insertCell().textContent = item.shape;
+                row.insertCell().textContent = item.igi || '-';
+                row.insertCell().textContent = formatCurrency(item.total_cost);
+                row.insertCell().textContent = item.status;
+
+                // Action Buttons Cell - Now Enabled
+                const actionCell = row.insertCell();
+                actionCell.classList.add('text-center');
+
+                // Edit Button
+                const editBtn = document.createElement('button');
+                editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>`;
+                editBtn.classList.add('btn', 'btn-secondary', 'btn-sm', 'mr-1');
+                editBtn.title = "แก้ไข";
+                // Use onclick for simplicity here, passing the SKU
+                editBtn.setAttribute('onclick', `editDiamond('${item.sku}')`);
+                actionCell.appendChild(editBtn);
+
+                // Delete Button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>`;
+                deleteBtn.classList.add('btn', 'btn-danger', 'btn-sm');
+                deleteBtn.title = "ลบ";
+                 // Use onclick for simplicity here, passing the SKU
+                deleteBtn.setAttribute('onclick', `deleteDiamond('${item.sku}')`);
+                actionCell.appendChild(deleteBtn);
+
+                 // Styling
+                 row.cells[0].classList.add('font-semibold', 'text-gray-800');
+                 row.cells[6].classList.add('text-right');
+                 row.cells[7].classList.add('font-medium');
+                 if(item.status === 'ขายแล้ว') row.cells[7].classList.add('text-red-600');
+                 else if (item.status === 'จอง') row.cells[7].classList.add('text-amber-600');
+                 else row.cells[7].classList.add('text-green-600');
+            });
+        }
+
+        // Reset form and edit state
+        function resetForm() {
+            diamondForm.reset();
+            editIdInput.value = ''; // Clear edit state
+            formTitle.textContent = 'เพิ่มรายการเพชรใหม่'; // Reset form title
+            saveBtnText.textContent = 'บันทึก'; // Reset button text
+            saveBtn.classList.replace('btn-warning', 'btn-primary'); // Reset button color
+            clearBtnText.textContent = 'ล้างฟอร์ม'; // Reset clear button text
+            skuInput.readOnly = false; // Make SKU editable again
+            skuInput.classList.remove('editable-key');
+            statusSelect.value = 'คงคลัง'; // Reset status
+        }
+
+        // --- Event Handlers ---
+        diamondForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const sku = skuInput.value.trim();
+            const igi = igiInput.value.trim();
+            const weight = weightInput.value;
+            const shape = shapeSelect.value;
+            const clarity = clarityInput.value.trim();
+            const color = colorInput.value.trim();
+            const diamond_cost = diamondCostInput.value;
+            const setting_cost = settingCostInput.value;
+            const status = statusSelect.value;
+            const editId = editIdInput.value; // SKU of item being edited, if any
+
+            // Basic Validation
+            if (!sku || !weight || !shape || !diamond_cost) {
+                showMessage("กรุณากรอกข้อมูลที่จำเป็น (รหัส, น้ำหนัก, ทรง, ราคาต้นทุนเพชร)", 'error');
+                return;
+            }
+
+             // Prepare data object
+             const diamondData = {
+                sku: sku, igi: igi, weight: parseFloat(weight) || 0, shape: shape,
+                clarity: clarity, color: color,
+                diamond_cost: parseFloat(diamond_cost) || 0,
+                setting_cost: parseFloat(setting_cost) || 0,
+                status: status,
+                total_cost: calculateTotalCost(diamond_cost, setting_cost)
+            };
+
+            if (editId) {
+                // --- EDIT MODE ---
+                const index = stock.findIndex(item => item.sku === editId);
+                if (index > -1) {
+                    stock[index] = diamondData; // Update item in array
+                    showMessage(`อัปเดตข้อมูลเพชร ${sku} สำเร็จ`);
+                } else {
+                     showMessage(`ไม่พบข้อมูลเพชร ${editId} ที่ต้องการแก้ไข`, 'error');
+                     resetForm(); // Reset form if edit target is lost
+                     return; // Stop further execution
+                }
+            } else {
+                // --- ADD MODE ---
+                 // Check if SKU already exists
+                if (stock.some(item => item.sku.toLowerCase() === sku.toLowerCase())) {
+                     showMessage(`รหัสเพชร '${sku}' มีอยู่ในระบบแล้ว`, 'error');
+                     return;
+                }
+                stock.push(diamondData); // Add new item
+                showMessage(`เพิ่มเพชร ${sku} สำเร็จ`);
+            }
+
+            saveStock(); // Save to localStorage
+            renderTable(); // Refresh table
+            resetForm(); // Clear form and reset edit state
+        });
+
+        clearBtn.addEventListener('click', resetForm); // Clear button resets form and edit state
+
+        // Filtering/Sorting Event Listeners
+        searchInput.addEventListener('input', renderTable);
+        filterStatusSelect.addEventListener('change', renderTable);
+        filterShapeSelect.addEventListener('change', renderTable);
+        sortFieldSelect.addEventListener('change', renderTable);
+
+        // Export Functions (remain the same)
+        function escapeCsvValue(value) { /* ... */ }
+        exportCsvBtn.addEventListener('click', () => { /* ... */ });
+        exportJsonBtn.addEventListener('click', () => { /* ... */ });
+        // Re-add the export function implementations here (omitted for brevity in thought process, but needed in final code)
+        function escapeCsvValue(value) {
+            const stringValue = String(value == null ? "" : value);
+            if (/[",\n]/.test(stringValue)) { return `"${stringValue.replace(/"/g, '""')}"`; }
+            return stringValue;
+        }
+         exportCsvBtn.addEventListener('click', () => {
+            if (stock.length === 0) { showMessage("ไม่มีข้อมูลให้ส่งออก", 'warning'); return; }
+            const headers = ['รหัสเพชร', 'น้ำหนัก', 'Clarity', 'น้ำ', 'ทรง', 'IGI Code', 'ราคาต้นทุนเพชร', 'ค่าทุนตัวเรือน', 'ต้นทุนรวม', 'สถานะ'];
+            const headerRow = headers.map(escapeCsvValue).join(',');
+            const dataRows = stock.map(item => {
+                const values = [ item.sku, item.weight, item.clarity, item.color, item.shape, item.igi, item.diamond_cost, item.setting_cost, item.total_cost, item.status ];
+                return values.map(escapeCsvValue).join(',');
+            }).join('\n');
+            const csvContent = '\uFEFF' + headerRow + '\n' + dataRows;
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                const timestamp = new Date().toISOString().slice(0, 10);
+                link.setAttribute("download", `diamond_stock_${timestamp}.csv`);
+                link.style.visibility = 'hidden'; document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link); URL.revokeObjectURL(url);
+                showMessage("กำลังดาวน์โหลดไฟล์ CSV...");
+            } else { showMessage("เบราว์เซอร์ไม่รองรับการดาวน์โหลด", 'error'); }
+        });
+         exportJsonBtn.addEventListener('click', () => {
+            if (stock.length === 0) { showMessage("ไม่มีข้อมูลให้ส่งออก", 'warning'); return; }
+            const jsonContent = JSON.stringify(stock, null, 2);
+            const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+            const link = document.createElement("a");
+             if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                const timestamp = new Date().toISOString().slice(0, 10);
+                link.setAttribute("download", `diamond_stock_${timestamp}.json`);
+                link.style.visibility = 'hidden'; document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link); URL.revokeObjectURL(url);
+                showMessage("กำลังดาวน์โหลดไฟล์ JSON...");
+            } else { showMessage("เบราว์เซอร์ไม่รองรับการดาวน์โหลด", 'error'); }
+        });
+
+
+        // --- Initial Load ---
+        renderTable(); // Render table on initial load
+
+    </script>
+
+</body>
+</html>
